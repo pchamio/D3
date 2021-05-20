@@ -1,0 +1,160 @@
+<html>
+    <head>
+        <title>network data in D3</title>
+        <style>
+            .svgCanvas {
+                border: solid 1px
+            }
+            div.tooltip {
+                position: absolute;
+                opacity: 0;
+                visibility: visible;
+                width: 300 px;
+                height: 200 px;
+                padding: 2 px;
+                font: 12 px sans - serif;
+                background: red;
+                border: 0 px;
+                border - radius: 8 px;
+                z - index: 50;
+                pointer - events: none;
+            }
+        </style>
+    </head>
+    <body>
+        <h1> The trading data between different location </h1>
+        <svg></svg>
+        
+        <script src="https://d3js.org/d3.v4.min.js"></script>
+        <script>
+            var heading = d3.select("h1").style("color","#07450f");
+            window.onload = function(){
+                // Canvas width and height
+                var width = 1200;
+                var height = 700;
+                
+                // Create a SVG canvas
+                var svgCanvas = d3.select("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("class", "svgCanvas");
+                
+                var tooltip = d3.select("body")
+                    .append("div")
+                    .style("opacity", 0)
+                    .attr("class", "tooltip")
+                    .style("background-color", "white")
+                    .style("border", "solid")
+                    .style("border-width", "2px")
+                    .style("border-radius", "5px")
+                    .style("padding", "5px");
+                    
+                            
+                
+                d3.json("data.json", function(data){
+                    console.log(data); 
+                    
+                    
+                    var line = svgCanvas.selectAll("line")
+                    .data(data.links)
+                    .enter()
+                    .append("g")
+                    .attr("class","line"); 
+                    
+                  
+                    var node = svgCanvas.selectAll("node")
+                    .data(data.nodes)
+                    .enter()
+                    .append("g")
+                    .attr("class", "node")
+                    .append("circle") // create one circle for each
+                    .attr("fill", "#ffbedc")
+                    .attr("cx", function(d){return d.x;})
+                    .attr("cy",  function(d){return d.y;})
+                    .attr("r", function(d){
+                        d.total = 0
+                        data.links.forEach(function(e){
+                            if (d.id == e.node01 || d.id == e.node02){
+                                d.total= d.total+e.amount
+                            }
+                        })
+                        return d.total/50
+                    })                                        
+                    .on("mouseover", function(d, index){
+                        svgCanvas.selectAll("circle")
+                            .attr("opacity", 0.1); // grey out all circles
+                        d3.select(this) // hightlight the on hovering on
+                            .attr("opacity", 1);
+                        tooltip.transition()		
+                            .duration(200)		
+                            .style("opacity", .9);
+                        tooltip.html("ID: "+d.id+ "<br/>" + "Total amount of trading: " + d.total +"<br/>" +"Number of connected location: "+line.filter(function(e) {
+                          return e.node01 === d.id || e.node02 === d.id;
+                        }).size())	
+                            .style("left", (d3.event.pageX+15) + "px")		
+                            .style("top", (d3.event.pageY - 30) + "px"); 
+                        line.style('opacity', function(l) {
+                            if (d.id === l.node01 || d.id === l.node02)
+                                return 1;
+                            else
+                                return 0.1;
+                            });
+
+                       
+                        })
+                    .on("mouseout", function(d, index){
+                      // restore all circles to normal mode
+                        svgCanvas.selectAll("circle") 
+                            .attr("opacity", 1);
+                        line.style('opacity', 1);
+                        tooltip.transition()		
+                            .duration(500)		
+                            .style("opacity", 0);
+                            
+
+                    });
+
+                    
+                    var lineScale = d3.scaleLinear()
+                      .domain([10, 1000])
+                      .range([0,10]);
+                    
+                   
+
+
+                    line.append("line")
+                    .attr("stroke", "black")
+                    .attr("x1", function(d) {
+                        return node.filter(function(e) {
+                            return e.id === d.node01
+                            }).attr("cx")
+                        })
+                    .attr("y1", function(d) {
+                          return node.filter(function(e) {
+                              return e.id === d.node01
+                          }).attr("cy")
+                      })
+                    .attr("x2", function(d) {
+                          return node.filter(function(e) {
+                              return e.id === d.node02
+                          }).attr("cx")
+                      })
+                    .attr("y2",  function(d) {
+                          return node.filter(function(e) {
+                              return e.id === d.node02
+                          }).attr("cy")
+                      })
+                    .attr("stroke","black")
+                    .style("stroke-width", function(d) { return lineScale(d.amount); });    
+                                  
+                    node.raise();
+                    
+                    
+		                  
+                    
+
+                });
+            }
+        </script>
+    </body>
+</html>
